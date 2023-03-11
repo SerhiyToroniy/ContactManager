@@ -1,3 +1,7 @@
+using ContactManager.Models;
+using DataTables.AspNet.AspNetCore;
+using Microsoft.EntityFrameworkCore;
+
 namespace ContactManager
 {
     public class Program
@@ -8,6 +12,8 @@ namespace ContactManager
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+            builder.Services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             var app = builder.Build();
 
