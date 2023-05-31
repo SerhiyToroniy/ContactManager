@@ -1,8 +1,145 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Upload";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<h2 class="upload-title">Upload CSV File</h2>
+<form method="post" asp-action="Upload" enctype="multipart/form-data">
+    <div class="form-group">
+        <input type="file" id="csvFile" name="csvFile" class="form-control-file" />
+        <button id="button-upload" type="submit" class="btn btn-primary">Upload</button>
+
+    </div>
+</form>
+
+@model List<Contact_Manager.Models.CsvDataModel>
+
+<table id="data-table" class="table">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Date of Birth</th>
+            <th>Married</th>
+            <th>Phone</th>
+            <th>Salary</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Id</td>
+                <td>@item.Name</td>
+                <td>@item.DateOfBirth.ToShortDateString()</td>
+                <td>@(item.Married ? "Yes" : "No")</td>
+                <td>@item.Phone</td>
+                <td>@item.Salary</td>
+                <td>
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="@item.Id">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@section scripts {
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="//cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" />
+
+    <script>
+        $(document).ready(function () {
+            // Initialize DataTable
+            var table = $('#data-table').DataTable();
+
+            // Enable inline editing
+            $('#data-table').on('click', 'td:not(:last-child)', function () {
+                var cell = table.cell(this);
+                var originalValue = cell.data();
+
+                // Create an input element with the current cell value
+                var inputElement = $('<input type="text" class="form-control">');
+                inputElement.val(originalValue);
+
+                // Replace the cell content with the input element
+                $(cell.node()).html(inputElement);
+
+                // Focus on the input element
+                inputElement.focus();
+
+                // Handle blur event on the input element
+                inputElement.on('blur', function () {
+                    var newValue = inputElement.val();
+
+                    // Update the cell data with the new value
+                    cell.data(newValue).draw();
+
+                    // Get the row data from the DataTable
+                    var rowData = table.row(cell.index().row).data();
+                    console.log(rowData);
+                    // Create an object with the updated values
+                    var updatedData = {
+                        Id: rowData[0],
+                        Name: rowData[1],
+                        DateOfBirth: rowData[2],
+                        Married: rowData[3] === "Yes" ? true : false,
+                        Phone: rowData[4],
+                        Salary: rowData[5]
+                    };
+
+                    // Make an AJAX call to save the changes to the database
+                    $.ajax({
+                        url: '@Url.Action("Edit", "Home")',
+                        type: 'POST',
+                        data: updatedData,
+                        success: function (result) {
+                            if (!result.success) {
+                                alert(result.message);
+                            }
+                        },
+                        error: function () {
+                            alert('An error occurred while updating the record.');
+                        }
+                    });
+
+                });
+
+                // Handle enter key press to update the cell data
+                inputElement.on('keyup', function (event) {
+                    if (event.key === 'Enter') {
+                        inputElement.blur();
+                    }
+                });
+            });
+
+            // Delete record
+            $('#data-table').on('click', '.delete-btn', function () {
+                var id = $(this).data('id');
+                var row = $(this).closest('tr');
+
+                // Send an AJAX request to delete the record
+                $.ajax({
+                    url: '@Url.Action("Delete", "Home")',
+                    type: 'POST',
+                    data: { id: id },
+                    success: function (result) {
+                        if (result.success) {
+                            // Remove the row from the table immediately
+                            table.row(row).remove().draw();
+                        } else {
+                            // Handle delete failure
+                            alert('Failed to delete the record.');
+                        }
+                    },
+                    error: function () {
+                        // Handle AJAX error
+                        alert('An error occurred while deleting the record.');
+                    }
+                });
+            });
+        });
+    </script>
+}
+
+
